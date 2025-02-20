@@ -15,6 +15,18 @@
             padding: 20px;
             border-radius: 10px;
         }
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid #fff;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body class="flex items-center justify-center min-h-screen">
@@ -29,6 +41,9 @@
             <input type="text" id="outputFile" placeholder="output.json" class="block w-full text-gray-900 p-2 rounded">
         </div>
         <button onclick="run()" class="w-full bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Run</button>
+        <div id="loading" class="flex justify-center mt-4" style="display: none;">
+            <div class="spinner"></div>
+        </div>
         <pre id="output" class="mt-4 text-sm"></pre>
     </div>
 
@@ -37,11 +52,15 @@
             const inputFile = document.getElementById('inputFile').files[0];
             const outputFile = document.getElementById('outputFile').value;
             const outputElement = document.getElementById('output');
+            const loadingElement = document.getElementById('loading');
 
             if (!inputFile || !outputFile) {
                 alert('Please select both input and output files.');
                 return;
             }
+
+            loadingElement.style.display = 'flex';
+            outputElement.textContent = '';
 
             const baseUrl = "https://www.edsm.net/api-v1/systems";
             const markers = [];
@@ -101,6 +120,7 @@
             const jsonOutput = JSON.stringify({ markers, lines }, null, 2);
             download(outputFile, jsonOutput);
             outputElement.textContent = `Data saved to ${outputFile}`;
+            loadingElement.style.display = 'none';
         }
 
         function readFile(file) {
