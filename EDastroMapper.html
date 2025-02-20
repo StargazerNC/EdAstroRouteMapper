@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Coordinates App</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: url('30dor~large.jpg') no-repeat center center fixed;
+            background-size: cover;
+        }
+        .container {
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen">
+    <div class="container text-white max-w-md mx-auto p-6">
+        <h1 class="text-3xl font-bold mb-6 text-center">System Coordinates App</h1>
+        <div class="mb-4">
+            <label for="inputFile" class="block text-sm font-medium mb-2">Input File:</label>
+            <input type="file" id="inputFile" class="block w-full text-gray-900 p-2 rounded">
+        </div>
+        <div class="mb-4">
+            <label for="outputFile" class="block text-sm font-medium mb-2">Output File:</label>
+            <input type="text" id="outputFile" placeholder="output.json" class="block w-full text-gray-900 p-2 rounded">
+        </div>
+        <button onclick="run()" class="w-full bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Run</button>
+        <pre id="output" class="mt-4 text-sm"></pre>
+    </div>
+
+    <script>
+        async function run() {
+            const inputFile = document.getElementById('inputFile').files[0];
+            const outputFile = document.getElementById('outputFile').value;
+            const outputElement = document.getElementById('output');
+
+            if (!inputFile || !outputFile) {
+                alert('Please select both input and output files.');
+                return;
+            }
+
+            const baseUrl = "https://www.edsm.net/api-v1/systems";
+            const markers = [];
+            const lines = [];
+            let firstCoords = null;
+            let previousCoords = null;
+
+            const systemNames = await readFile(inputFile);
+
+            for (const name of systemNames) {
+                const url = `${baseUrl}?systemName=${name}&onlyKnownCoordinates=1&showCoordinates=1`;
+                const response = await fetch(url);
+                const systems = await response.json();
+
+                if (systems && systems.length > 0) {
+                    for (const system of systems) {
+                        const coords = system.coords;
+                        const marker = {
+                            pin: "blue",
+                            text: `System: ${system.name}`,
+                            x: coords.x,
+                            y: coords.y,  // Not used but included for completeness
+                            z: coords.z
+                        };
+                        markers.push(marker);
+
+                        if (!firstCoords) {
+                            firstCoords = coords;
+                        }
+
+                        if (previousCoords) {
+                            const line = {
+                                x1: previousCoords.x,
+                                z1: previousCoords.z,
+                                x2: coords.x,
+                                z2: coords.z,
+                                color: "#FFF"
+                            };
+                            lines.push(line);
+                        }
+
+                        previousCoords = coords;
+                    }
+                }
+            }
+
+            if (firstCoords && previousCoords && (firstCoords.x !== previousCoords.x || firstCoords.z !== previousCoords.z)) {
+                lines.push({
+                    x1: previousCoords.x,
+                    z1: previousCoords.z,
+                    x2: firstCoords.x,
+                    z2: firstCoords.z,
+                    color: "#FFF"
+                });
+            }
+
+            const jsonOutput = JSON.stringify({ markers, lines }, null, 2);
+            download(outputFile, jsonOutput);
+            outputElement.textContent = `Data saved to ${outputFile}`;
+        }
+
+        function readFile(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result.split('\n').map(line => line.trim()).filter(line => line));
+                reader.onerror = reject;
+                reader.readAsText(file);
+            });
+        }
+
+        function download(filename, text) {
+            const element = document.createElement('a');
+            element.setAttribute('href', 'data:text/json;charset=utf-8,' + encodeURIComponent(text));
+            element.setAttribute('download', filename);
+
+            element.style.display = 'none';
+            document.body.appendChild(element);
+
+            element.click();
+
+            document.body.removeChild(element);
+        }
+    </script>
+</body>
+</html>
